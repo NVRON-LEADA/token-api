@@ -19,7 +19,12 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // ✅ ALLOWED ORIGINS (wildcard for subdomains like clinic1.token.leada360.com)
-
+// ✅ Allow subdomains of token.leada360.com and frontend domain
+const allowedOrigins = [
+  /^https:\/\/(?:[\w-]+\.)*token\.leada360\.com$/, // e.g., clinic1.token.leada360.com
+  'https://token.leada360.com',                   // main frontend
+  'https://token-api-0z44.onrender.com'           // allow your own API for dev
+];
 
 // ✅ CORS CONFIG
 app.use(cors({
@@ -127,7 +132,7 @@ app.get('/api/clinic/:subdomain', async (req, res) => {
 // ✅ Health check
 app.get('/', (req, res) => {
   if (req.subdomain) {
-    res.json({ message: `API running for Clinic "${req.subdomain}"` });
+    res.json({ message: `API running for clinic "${req.subdomain}"` });
   } else {
     res.json({ message: 'API running on main domain' });
   }
