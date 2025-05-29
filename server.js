@@ -19,9 +19,7 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // ✅ ALLOWED ORIGINS (wildcard for subdomains like clinic1.token.leada360.com)
-const allowedOrigins = [
-  /^https:\/\/(?:[\w-]+\.)*token\.leada360\.com$/
-];
+
 
 // ✅ CORS CONFIG
 app.use(cors({
