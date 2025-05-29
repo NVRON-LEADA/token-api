@@ -127,7 +127,7 @@ app.get('/api/clinic/:subdomain', async (req, res) => {
 // ✅ Health check
 app.get('/', (req, res) => {
   if (req.subdomain) {
-    res.json({ message: `API running for clinic "${req.subdomain}"` });
+    res.json({ message: `API running for Clinic "${req.subdomain}"` });
   } else {
     res.json({ message: 'API running on main domain' });
   }
