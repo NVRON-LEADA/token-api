@@ -23,7 +23,9 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   /^https:\/\/(?:[\w-]+\.)*token\.leada360\.com$/, // e.g., clinic1.token.leada360.com
   'https://token.leada360.com',                   // main frontend
-  'https://token-api-0z44.onrender.com'           // allow your own API for dev
+  'https://token-api-0z44.onrender.com',          // allow your own API for dev
+  'http://localhost:3000',                        // allow local development
+  /^http:\/\/(?:[\w-]+\.)*lvh\.me:3000$/           // allow *.lvh.me:3000 for dev
 ];
 
 // ✅ CORS CONFIG
@@ -50,18 +52,24 @@ app.use((req, res, next) => {
     return next();
   }
 
-  const hostname = host.split(':')[0]; // remove port if present
+  const hostname = host.split(':')[0].toLowerCase().replace(/\.$/, '');
   const parts = hostname.split('.');
 
-  // Get subdomain only if it's like clinic1.token.leada360.com
+  // clinic1.token.leada360.com
   if (parts.length >= 4 && parts[1] === 'token' && parts[2] === 'leada360') {
     req.subdomain = parts[0];
+
+  // clinic1.lvh.me
+  } else if (parts.length >= 3 && parts[parts.length - 2] === 'lvh' && parts[parts.length - 1] === 'me') {
+    req.subdomain = parts.slice(0, parts.length - 2).join('.'); // supports multi-level subdomains
+
   } else {
     req.subdomain = null;
   }
 
   next();
 });
+
 
 // ✅ Socket.IO with same CORS policy
 const io = new SocketIO(server, {
