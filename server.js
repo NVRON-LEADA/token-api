@@ -19,21 +19,30 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // ✅ ALLOWED ORIGINS (wildcard for subdomains like clinic1.token.leada360.com)
-// ✅ Allow subdomains of token.leada360.com and frontend domain
 const allowedOrigins = [
   /^https:\/\/(?:[\w-]+\.)*token\.leada360\.com$/, // e.g., clinic1.token.leada360.com
   'https://token.leada360.com',                   // main frontend
-  'https://token-api-0z44.onrender.com',          // allow your own API for dev
-  'http://localhost:3000',                        // allow local development
-  /^http:\/\/(?:[\w-]+\.)*lvh\.me:3000$/           // allow *.lvh.me:3000 for dev
+  'https://token-api-0z44.onrender.com',          // backend on Render
+  'http://localhost:3000',                        // local frontend dev
+  /^http:\/\/(?:[\w-]+\.)*lvh\.me:3000$/           // *.lvh.me for dev
 ];
 
-// ✅ CORS CONFIG
+// ✅ Enhanced CORS configuration
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.some(pattern => pattern.test(origin))) {
+    console.log('🔍 CORS Origin:', origin);
+
+    if (!origin) return callback(null, true); // allow curl or dev tools without origin
+
+    const isAllowed = allowedOrigins.some(pattern => {
+      if (typeof pattern === 'string') return pattern === origin;
+      return pattern.test(origin);
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.warn(`❌ CORS blocked: ${origin}`);
       callback(new Error(`CORS error: ${origin} is not allowed`));
     }
   },
@@ -44,7 +53,7 @@ app.use(cors({
 // ✅ JSON middleware
 app.use(express.json());
 
-// ✅ Subdomain extraction middleware
+// ✅ Subdomain extraction
 app.use((req, res, next) => {
   const host = req.headers.host;
   if (!host) {
@@ -55,14 +64,10 @@ app.use((req, res, next) => {
   const hostname = host.split(':')[0].toLowerCase().replace(/\.$/, '');
   const parts = hostname.split('.');
 
-  // clinic1.token.leada360.com
   if (parts.length >= 4 && parts[1] === 'token' && parts[2] === 'leada360') {
     req.subdomain = parts[0];
-
-  // clinic1.lvh.me
   } else if (parts.length >= 3 && parts[parts.length - 2] === 'lvh' && parts[parts.length - 1] === 'me') {
-    req.subdomain = parts.slice(0, parts.length - 2).join('.'); // supports multi-level subdomains
-
+    req.subdomain = parts.slice(0, parts.length - 2).join('.');
   } else {
     req.subdomain = null;
   }
@@ -70,14 +75,23 @@ app.use((req, res, next) => {
   next();
 });
 
-
-// ✅ Socket.IO with same CORS policy
+// ✅ Socket.IO with CORS
 const io = new SocketIO(server, {
   cors: {
     origin: function(origin, callback) {
-      if (!origin || allowedOrigins.some(pattern => pattern.test(origin))) {
+      console.log('🔌 Socket Origin:', origin);
+
+      if (!origin) return callback(null, true);
+
+      const isAllowed = allowedOrigins.some(pattern => {
+        if (typeof pattern === 'string') return pattern === origin;
+        return pattern.test(origin);
+      });
+
+      if (isAllowed) {
         callback(null, true);
       } else {
+        console.warn(`❌ Socket CORS blocked: ${origin}`);
         callback(new Error('Socket.IO CORS error: Origin not allowed'));
       }
     },
@@ -85,10 +99,9 @@ const io = new SocketIO(server, {
     credentials: true,
   }
 });
-
 app.set('io', io);
 
-// ✅ Socket.IO connection
+// ✅ Socket.IO connection handler
 io.on('connection', (socket) => {
   console.log('🔌 New client connected');
 
@@ -103,7 +116,7 @@ app.use('/api/tokens', tokensRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/clinics', clinicRoutes);
 
-// ✅ Clinic info by current subdomain
+// ✅ Get clinic info by current subdomain
 app.get('/api/clinic', async (req, res) => {
   const subdomain = req.subdomain;
   if (!subdomain) return res.status(400).json({ error: 'Subdomain not provided' });
@@ -124,7 +137,7 @@ app.get('/api/clinic', async (req, res) => {
   }
 });
 
-// ✅ Clinic info by subdomain param
+// ✅ Get clinic by subdomain param
 app.get('/api/clinic/:subdomain', async (req, res) => {
   const subdomain = req.params.subdomain;
   try {
@@ -137,7 +150,7 @@ app.get('/api/clinic/:subdomain', async (req, res) => {
   }
 });
 
-// ✅ Health check
+// ✅ Health check route
 app.get('/', (req, res) => {
   if (req.subdomain) {
     res.json({ message: `API running for clinic "${req.subdomain}"` });
